@@ -1,0 +1,5 @@
+---
+- name: install and configure rsyslog on the nodes
+  hosts: localhost
+  roles:
+    - role: "{{logging_role_path}}"

@@ -1,0 +1,22 @@
+rsyslog_enabled: true
+rsyslog_viaq: true
+logging_mmk8s_token: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+logging_mmk8s_ca_cert: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+use_omelasticsearch_cert: true
+rsyslog_purge_original_conf: true
+rsyslog_max_message_size: 32767
+use_rsyslog_image: true
+logging_outputs:
+  - name: "`echo $ES_OUTPUT_NAME`" #ignored if use_rsyslog_image==true
+    type: elasticsearch
+    logs_collections:
+      - name: 'viaq'
+      - name: 'viaq-k8s'
+    # 'state' is not a mandatory field. Defaults to 'present'.
+    server_host: "`echo $ES_HOST`" #ignored if use_rsyslog_image==true
+    server_port: "`echo $ES_PORT`" #ignored if use_rsyslog_image==true
+    template: es_template
+    index_prefix: project.
+    ca_cert: "`echo $ES_CA`" #ignored if use_rsyslog_image==true
+    cert: "`echo $ES_CLIENT_CERT`" #ignored if use_rsyslog_image==true
+    key: "`echo $ES_CLIENT_KEY`" #ignored if use_rsyslog_image==true

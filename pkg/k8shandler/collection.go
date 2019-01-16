@@ -261,6 +261,12 @@ func createOrUpdateRsyslogConfigMap(logging *logging.ClusterLogging) error {
 		if fileInfo.Name() == "rsyslog.sh" {
 			continue
 		}
+		if fileInfo.Name() == "vars.yaml" {
+			continue
+		}
+		if fileInfo.Name() == "playbook.yaml" {
+			continue
+		}
 		// include all other files
 		fullname := "files/rsyslog/" + fileInfo.Name()
 		rsyslogConfigMapFiles[fileInfo.Name()] = string(utils.GetFileContents(fullname))

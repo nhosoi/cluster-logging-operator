@@ -29,6 +29,9 @@ OC?=oc
 # go source files, ignore vendor directory
 SRC = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
+# rsyslog config files
+RSYSLOG_CONF_FILES = $(shell find $(CURPATH)/files/rsyslog -type f \( -name "*.rulebase" -o -name "*.json" -o -name "*.conf" \))
+
 #.PHONY: all build clean install uninstall fmt simplify check run
 .PHONY: all operator-sdk imagebuilder build clean fmt simplify gendeepcopy deploy-setup deploy-image deploy deploy-example test-e2e undeploy
 
@@ -56,11 +59,13 @@ build: fmt
 	@GOPATH=$(BUILD_GOPATH) $(GOBUILD) $(LDFLAGS) -o $(TARGET) $(MAIN_PKG)
 
 clean:
-	@rm -rf $(TARGET_DIR)
+	@rm -rf $(TARGET_DIR) $(RSYSLOG_CONF_FILES)
 
 image: imagebuilder
 	@if [ $${USE_IMAGE_STREAM:-false} = false ] ; \
-	then $(IMAGE_BUILDER) -t $(IMAGE_TAG) . $(IMAGE_BUILDER_OPTS) ; \
+	then \
+	scripts/gen_rsyslog_config_files.sh \
+	$(IMAGE_BUILDER) -t $(IMAGE_TAG) . $(IMAGE_BUILDER_OPTS) ; \
 	fi
 
 fmt:
