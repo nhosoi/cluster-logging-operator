@@ -66,6 +66,10 @@ required = [
   name = "github.com/openshift/elasticsearch-operator"
   branch = "master"
 
+[[constraint]]
+  name = "github.com/openshift/api"
+  branch = "release-4.2"
+
 [prune]
   go-tests = true
   non-go = true

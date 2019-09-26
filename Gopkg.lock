@@ -459,15 +459,16 @@
   version = "1.0.1"
 
 [[projects]]
-  digest = "1:8bc8f43d2332d035857c92581df240f247c287629d5f60c751df609f9b6215c5"
+  branch = "release-4.2"
+  digest = "1:cec9c86a58a5f6d7300b60f96ce9a6a83991bb1437e28a7cfb7a93900a83e628"
   name = "github.com/openshift/api"
   packages = [
+    "config/v1",
     "oauth/v1",
     "route/v1",
   ]
   pruneopts = "NT"
-  revision = "0d921e363e951d89f583292c60d013c318df64dc"
-  version = "v3.9.0"
+  revision = "cdbe64fb0c9184ffe47d24d0ea490705a92d9fd8"
 
 [[projects]]
   branch = "master"
@@ -476,6 +477,8 @@
   packages = [
     "pkg/apis",
     "pkg/apis/logging/v1",
+    "pkg/utils",
+    "test/utils",
   ]
   pruneopts = "T"
   revision = "718361d9f417cc731a6cabda959c87ff3b80f128"
@@ -1251,10 +1254,12 @@
   input-imports = [
     "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1",
     "github.com/go-openapi/spec",
+    "github.com/openshift/api/config/v1",
     "github.com/openshift/api/oauth/v1",
     "github.com/openshift/api/route/v1",
     "github.com/openshift/elasticsearch-operator/pkg/apis",
     "github.com/openshift/elasticsearch-operator/pkg/apis/logging/v1",
+    "github.com/openshift/elasticsearch-operator/test/utils",
     "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/leader",
     "github.com/operator-framework/operator-sdk/pkg/log/zap",

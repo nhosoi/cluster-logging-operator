@@ -3,6 +3,7 @@ package k8shandler
 import (
 	"fmt"
 	"time"
+	"context"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	logging "github.com/openshift/cluster-logging-operator/pkg/apis/logging/v1"
@@ -15,6 +16,9 @@ import (
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+
+	client "sigs.k8s.io/controller-runtime/pkg/client"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
 const (
@@ -193,7 +197,10 @@ func (clusterRequest *ClusterLoggingRequest) createOrUpdateFluentdSecret() error
 	return nil
 }
 
-func newFluentdPodSpec(logging *logging.ClusterLogging, elasticsearchAppName string, elasticsearchInfraName string) v1.PodSpec {
+// func newFluentdPodSpec(clusterRequest *ClusterLoggingRequest, elasticsearchAppName string, elasticsearchInfraName string) v1.PodSpec {
+func newFluentdPodSpec(logging *logging.ClusterLogging, elasticsearchAppName string, elasticsearchInfraName string, proxyConfig *configv1.Proxy) v1.PodSpec {
+	// var logging *logging.ClusterLogging = clusterRequest.cluster
+
 	var resources = logging.Spec.Collection.Logs.FluentdSpec.Resources
 	if resources == nil {
 		resources = &v1.ResourceRequirements{
@@ -238,6 +245,28 @@ func newFluentdPodSpec(logging *logging.ClusterLogging, elasticsearchAppName str
 		{Name: "FLUENTD_MEMORY_LIMIT", ValueFrom: &v1.EnvVarSource{ResourceFieldRef: &v1.ResourceFieldSelector{ContainerName: "fluentd", Resource: "limits.memory"}}},
 		{Name: "NODE_IPV4", ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "status.hostIP"}}},
 		{Name: "CDM_KEEP_EMPTY_FIELDS", Value: "message"}, // by default, keep empty messages
+	}
+	if (proxyConfig != nil) {
+		if len(proxyConfig.Status.HTTPProxy) > 0 {
+			updateEnvVar(&fluentdContainer.Env, v1.EnvVar{Name: "HTTP_PROXY", Value: proxyConfig.Status.HTTPProxy})
+		} else {
+			fmt.Printf("fluentd: HTTP_PROXY is not set\n")
+		}
+		if len(proxyConfig.Status.HTTPSProxy) > 0 {
+			updateEnvVar(&fluentdContainer.Env, v1.EnvVar{Name: "HTTPS_PROXY", Value: proxyConfig.Status.HTTPSProxy})
+		} else {
+			fmt.Printf("fluentd: HTTPS_PROXY is not set\n")
+		}
+		if len(proxyConfig.Status.NoProxy) > 0 {
+			updateEnvVar(&fluentdContainer.Env, v1.EnvVar{Name: "NO_PROXY", Value: proxyConfig.Status.NoProxy})
+		} else {
+			fmt.Printf("fluentd: NO_PROXY is not set\n")
+		}
+		if len(proxyConfig.Spec.TrustedCA.Name) > 0 {
+			fmt.Printf("cluster proxy trustedCA : %s", proxyConfig.Spec.TrustedCA.Name)
+		} else {
+			fmt.Printf("fluentd: TrustedCA is not set\n")
+		}
 	}
 
 	fluentdContainer.VolumeMounts = []v1.VolumeMount{
@@ -303,7 +332,28 @@ func (clusterRequest *ClusterLoggingRequest) createOrUpdateFluentdDaemonset() (e
 
 	cluster := clusterRequest.cluster
 
-	fluentdPodSpec := newFluentdPodSpec(cluster, "elasticsearch", "elasticsearch")
+    proxy := &configv1.ProxyList{
+        TypeMeta: metav1.TypeMeta{
+            Kind:       "ProxyList",
+            APIVersion: "config.openshift.io/v1",
+        },
+    }
+
+/************************************************************
+Got proxy: &{{ProxyList config.openshift.io/v1} {  } []}
+************************************************************/
+    if err = clusterRequest.client.List(context.TODO(), &client.ListOptions{Namespace: "cluster"}, proxy); err != nil {
+		if errors.IsNotFound(err) {
+			fmt.Printf("proxy is not found: %v\n", err)
+		} else {
+			fmt.Printf("Failed to get proxy: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Got proxy: %v\n", proxy)
+	}
+
+	// FixMe: proxylist -> proxy; fluentdPodSpec := newFluentdPodSpec(cluster, "elasticsearch", "elasticsearch", proxy)
+	fluentdPodSpec := newFluentdPodSpec(cluster, "elasticsearch", "elasticsearch", nil)
 
 	fluentdDaemonset := NewDaemonSet("fluentd", cluster.Namespace, "fluentd", "fluentd", fluentdPodSpec)
 
@@ -369,4 +419,22 @@ func (clusterRequest *ClusterLoggingRequest) updateFluentdDaemonsetIfRequired(de
 	}
 
 	return nil
+}
+
+func updateEnvVar(env *[]v1.EnvVar, m v1.EnvVar) {
+	exists := false
+	for _, elem := range *env {
+		fmt.Printf("updateEnvVar(%s, %s)\n", elem.Name, elem.Value)
+		if elem.Name == m.Name {
+			exists = true
+			if elem.Value != m.Value {
+				elem.Value = m.Value
+				fmt.Printf("fluentd: set env(%s, %s) - replace\n", m.Name, m.Value)
+			}
+		}
+	}
+	if !exists {
+		*env = append(*env, m)
+		fmt.Printf("fluentd: set env(%s, %s) - new\n", m.Name, m.Value)
+	}
 }

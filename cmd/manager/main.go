@@ -30,6 +30,7 @@ import (
 	oauth "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	elasticsearch "github.com/openshift/elasticsearch-operator/pkg/apis"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -133,6 +134,11 @@ func main() {
 	}
 
 	if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := configv1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
