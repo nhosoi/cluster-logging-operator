@@ -31,6 +31,7 @@ var (
 
 // CreateOrUpdateVisualization reconciles visualization component for cluster logging
 func (clusterRequest *ClusterLoggingRequest) CreateOrUpdateVisualization() (err error) {
+	logrus.Infof("DBG: CreateOrUpdateVisualization: %v", clusterRequest.cluster.Spec)
 	if clusterRequest.cluster.Spec.Visualization == nil || clusterRequest.cluster.Spec.Visualization.Type == "" {
 		clusterRequest.removeKibana()
 		return nil

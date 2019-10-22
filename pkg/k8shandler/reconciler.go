@@ -2,36 +2,41 @@ package k8shandler
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 
 	logging "github.com/openshift/cluster-logging-operator/pkg/apis/logging/v1"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func Reconcile(requestCluster *logging.ClusterLogging, requestClient client.Client) (err error) {
+func Reconcile(requestCluster *logging.ClusterLogging, requestClient client.Client, collectionOnly bool) (err error) {
+
+	logrus.Infof("DBG: k8shandler reconcile request.Name: '%s'", requestCluster.Name)
 
 	clusterLoggingRequest := ClusterLoggingRequest{
 		client:  requestClient,
 		cluster: requestCluster,
 	}
 
-	// Reconcile certs
-	if err = clusterLoggingRequest.CreateOrUpdateCertificates(); err != nil {
-		return fmt.Errorf("Unable to create or update certificates for %q: %v", clusterLoggingRequest.cluster.Name, err)
-	}
+	if !collectionOnly {
+		// Reconcile certs
+		if err = clusterLoggingRequest.CreateOrUpdateCertificates(); err != nil {
+			return fmt.Errorf("Unable to create or update certificates for %q: %v", clusterLoggingRequest.cluster.Name, err)
+		}
 
-	// Reconcile Log Store
-	if err = clusterLoggingRequest.CreateOrUpdateLogStore(); err != nil {
-		return fmt.Errorf("Unable to create or update logstore for %q: %v", clusterLoggingRequest.cluster.Name, err)
-	}
+		// Reconcile Log Store
+		if err = clusterLoggingRequest.CreateOrUpdateLogStore(); err != nil {
+			return fmt.Errorf("Unable to create or update logstore for %q: %v", clusterLoggingRequest.cluster.Name, err)
+		}
 
-	// Reconcile Visualization
-	if err = clusterLoggingRequest.CreateOrUpdateVisualization(); err != nil {
-		return fmt.Errorf("Unable to create or update visualization for %q: %v", clusterLoggingRequest.cluster.Name, err)
-	}
+		// Reconcile Visualization
+		if err = clusterLoggingRequest.CreateOrUpdateVisualization(); err != nil {
+			return fmt.Errorf("Unable to create or update visualization for %q: %v", clusterLoggingRequest.cluster.Name, err)
+		}
 
-	// Reconcile Curation
-	if err = clusterLoggingRequest.CreateOrUpdateCuration(); err != nil {
-		return fmt.Errorf("Unable to create or update curation for %q: %v", clusterLoggingRequest.cluster.Name, err)
+		// Reconcile Curation
+		if err = clusterLoggingRequest.CreateOrUpdateCuration(); err != nil {
+			return fmt.Errorf("Unable to create or update curation for %q: %v", clusterLoggingRequest.cluster.Name, err)
+		}
 	}
 
 	// Reconcile Collection

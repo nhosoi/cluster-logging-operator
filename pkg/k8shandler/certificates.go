@@ -6,6 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/openshift/cluster-logging-operator/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -117,6 +118,8 @@ func (clusterRequest *ClusterLoggingRequest) extractCertificates(secretName stri
 
 //CreateOrUpdateCertificates for a cluster logging instance
 func (clusterRequest *ClusterLoggingRequest) CreateOrUpdateCertificates() (err error) {
+
+	logrus.Infof("DBG: CreateOrUpdateCertificates: %v", clusterRequest.cluster.Spec)
 
 	// Pull master signing cert out from secret in logging.Spec.SecretName
 	if err = clusterRequest.readSecrets(); err != nil {

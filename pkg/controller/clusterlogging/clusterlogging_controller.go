@@ -6,13 +6,17 @@ import (
 
 	loggingv1 "github.com/openshift/cluster-logging-operator/pkg/apis/logging/v1"
 	"github.com/openshift/cluster-logging-operator/pkg/k8shandler"
+	"github.com/sirupsen/logrus"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	// "sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	// "sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -44,7 +48,41 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	/******** DID NOT WORK *********
+	h := &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &loggingv1.ClusterLogging{},
+		 }
+	******** DID NOT WORK *********/
+
+	/******** DID NOT WORK *********
+	// We only care about a configmap source with a specific name/namespace,
+	// so filter events before they are provided to the controller event handlers.
+	pred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			b := handleClusterLogging(e.MetaNew)
+			logrus.Infof("DBG_CL: Update '%v'", b)
+			return b
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			b := handleClusterLogging(e.Meta)
+			logrus.Infof("DBG_CL: Delete '%v'", b)
+			return b
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			b := handleClusterLogging(e.Meta)
+			logrus.Infof("DBG_CL: Create '%v'", b)
+			return b
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			b := handleClusterLogging(e.Meta)
+			logrus.Infof("DBG_CL: Generic '%v'", b)
+			return b
+		},
+	}
 	// Watch for changes to primary resource ClusterLogging
+	err = c.Watch(&source.Kind{Type: &loggingv1.ClusterLogging{}}, &handler.EnqueueRequestForObject{}, pred)
+	******** DID NOT WORK *********/
 	err = c.Watch(&source.Kind{Type: &loggingv1.ClusterLogging{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
@@ -52,6 +90,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	return nil
 }
+
+/******** DID NOT WORK *********
+// handleClusterLogging returns true if meta namespace is "openshift-logging".
+func handleClusterLogging(meta metav1.Object) bool {
+	return meta.GetNamespace() == "openshift-logging"
+}
+******** DID NOT WORK *********/
 
 var _ reconcile.Reconciler = &ReconcileClusterLogging{}
 
@@ -73,6 +118,7 @@ var (
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileClusterLogging) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	logrus.Infof("DBG_CL: Clusterlogging reconcile request.Name: '%s'", request.Name)
 	// Fetch the ClusterLogging instance
 	instance := &loggingv1.ClusterLogging{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -90,6 +136,7 @@ func (r *ReconcileClusterLogging) Reconcile(request reconcile.Request) (reconcil
 	if instance.Name != singletonName {
 		// TODO: update status
 
+		logrus.Infof("DBG_CL: Clusterlogging instance.Name != singletonName: '%s' != '%s'", instance.Name, singletonName)
 		return reconcile.Result{}, nil
 	}
 
@@ -97,7 +144,7 @@ func (r *ReconcileClusterLogging) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, nil
 	}
 
-	if err = k8shandler.Reconcile(instance, r.client); err != nil {
+	if err = k8shandler.Reconcile(instance, r.client, false); err != nil {
 		return reconcileResult, err
 	}
 
